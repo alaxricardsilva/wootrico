@@ -1,0 +1,125 @@
+version: "3.7"
+
+services:
+  wootrico-webhook:
+    image: ericoautomacao/wootrico:dev
+    environment:
+      - PORT=3000
+      - LOG_LEVEL=info
+      
+      - WEBHOOK_BASE_URL=https://apiwootrico.cursoautonext.com.br
+      - WEBHOOK_NAME=wootrico
+      - APP_DATA_FILE=/app/data/app-data.json      
+      - NATS_URL=nats://nats:4222              
+      
+    #ports:
+      #- 3000:3000
+    networks:
+      - erico-net-desenv
+    volumes:
+      - wootrico-data:/app/data
+    command: npm start
+    # Configura o Modo de Deploy da Aplicação
+    deploy:
+      # Configura o modo de deploy
+      mode: replicated
+      # Configura o numero de replicas
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+          # - node.hostname == worker1
+      resources:
+        limits:          
+          cpus: "1"          
+          memory: 800M
+      labels:
+        # Configura o Roteamento do Traefik
+        # habilita o traefik
+        - traefik.enable=true 
+        # Configura o Roteamento do Traefik para o Chatwoot
+        - traefik.http.routers.wootrico-webhook.rule=Host(`apiwootrico.cursoautonext.com.br`)
+        # Define o tipo de entrada para HTTPS
+        - traefik.http.routers.wootrico-webhook.entrypoints=websecure
+        # Define o certificado
+        - traefik.http.routers.wootrico-webhook.tls.certresolver=letsencryptresolver
+        # Define o serviço do Chatwoot
+        - traefik.http.routers.wootrico-webhook.service=wootrico-webhook
+        # Define a porta do Chatwoot
+        - traefik.http.services.wootrico-webhook.loadbalancer.server.port=3000
+        # Define os Headers do Chatwoot
+        - traefik.http.services.wootrico-webhook.loadbalancer.passhostheader=true
+
+  wootrico-consumer:
+    image: ericoautomacao/wootrico:dev
+    environment:
+      - LOG_LEVEL=info
+      
+      - WEBHOOK_BASE_URL=https://apiwootrico.cursoautonext.com.br
+      - WEBHOOK_NAME=wootrico
+      
+      - CHATWOOT_BASE_URL=https://chat.cursoautonext.com.br
+      - CHATWOOT_API_TOKEN=eFqZpoFTGzrrHE1JnLEawAoo
+      - CHATWOOT_ACCOUNT_ID=1
+
+      - CHATWOOT_INBOX_NAME=WootricoDev
+
+      - REABRIR_CONVERSA=true
+      - DESCONSIDERAR_GRUPO=false
+      - ASSINAR_MENSAGEM=true
+
+      - APP_DATA_FILE=/app/data/app-data.json
+      - DEFAULT_COUNTRY=BR
+      - NATS_URL=nats://nats:4222     
+
+      # Configuração Z-API 
+      #- ZAPI_INSTANCIA=3E02793370CEB042B3604AF752FBD4C9
+      #- ZAPI_TOKEN_INSTANCIA=F4C2DC7613C99B35FB9B3AB0
+      #- ZAPI_CLIENT_TOKEN=F23d562cc477a4fc1bf98e09489972463S
+
+      
+
+      # Configuração UAZAPI
+      - UAZAPI_BASE_URL=https://autonext.uazapi.com
+      - UAZAPI_TOKEN=b9394284-bc1e-4426-913c-565016e8dd94
+
+
+
+      
+      # Configuração WuZAPI
+      #- WUZAPI_BASE_URL=https://apiwuzapi.cursoautonext.com.br
+      #- WUZAPI_TOKEN=neura      
+      
+    networks:
+      - erico-net-desenv
+    volumes:
+      - wootrico-data:/app/data
+    command: npm run consumer
+    # Configura o Modo de Deploy da Aplicação
+    deploy:
+      # Configura o modo de deploy
+      mode: replicated
+      # Configura o numero de replicas
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:          
+          cpus: "1"          
+          memory: 800M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+volumes:
+  wootrico-data:
+    external: true
+    name: wootrico-data
+
+# Rede overlay externa usada em todo o cluster AutoNext
+networks:
+  erico-net-desenv:
+    external: true
+    name: erico-net-desenv

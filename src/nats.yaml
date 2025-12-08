@@ -1,0 +1,54 @@
+version: "3.7"
+
+services:
+  nats:
+    image: nats:latest
+    command: >
+      -js
+      -sd /data
+      --http_port 8222
+    ports:
+      #- "4222:4222"   # porta dos clientes
+      - "8222:8222"   # monitoramento via HTTP
+    volumes:
+      - nats-data:/data
+    
+    # Conecta o serviço à rede externa definida
+    networks:
+      - erico-net-desenv
+    
+    # Configuração de deploy do serviço no modo Swarm
+    deploy:
+      # Usa modo replicado (padrão para serviços de banco no Swarm)
+      mode: replicated
+      replicas: 1
+      # Define a localização onde o serviço será implantado
+      placement:
+        constraints:
+          # Pode ser por função do nó (ex: manager) ou nome exato
+          # - node.role == worker
+          - node.role == manager
+      # Limita os recursos consumidos por este container
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nats.rule=Host(`meunats.cursoautonext.com.br`)
+        - traefik.http.routers.nats.entrypoints=websecure
+        - traefik.http.routers.nats.priority=1
+        - traefik.http.routers.nats.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.nats.service=nats
+        - traefik.http.services.nats.loadbalancer.server.port=8222
+
+volumes:
+  nats-data:
+    external: true
+    name: nats-data
+
+# Rede overlay do Docker Swarm (também já existente)
+networks:
+  erico-net-desenv:
+    external: true
+    name: erico-net-desenv
