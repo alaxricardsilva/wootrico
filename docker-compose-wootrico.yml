@@ -1,0 +1,43 @@
+services:
+  wootrico:
+    image: ericoautomacao/wootrico:latest
+    environment:
+      LOG_LEVEL: info
+      WEBHOOK_BASE_URL: 'https://$(PRIMARY_DOMAIN)'
+      WEBHOOK_NAME: chatwoot
+      CHATWOOT_BASE_URL: 'https://chat.cdnproxy.top'
+      CHATWOOT_API_TOKEN: oLs6F17MkngBdFj12Sqc26qz
+      CHATWOOT_ACCOUNT_ID: "1"
+      CHATWOOT_INBOX_ID: "7"
+      APP_DATA_FILE: /app/data/app_data.json
+      DEFAULT_COUNTRY: BR
+      WUZAPI_BASE_URL: 'https://whats-api.cdnproxy.top'
+      WUZAPI_API_KEY: D6l6PxoFJYVqMwH7nmX4
+    # REMOVIDO: A seção "ports" foi removida para o EasyPanel gerenciar.
+    # ports:
+    #   - "3031:3000"
+    networks:
+      - wootrico_network
+    volumes:
+      - wootrico_data:/app/data
+    depends_on:
+      - nats
+
+  nats:
+    image: nats:latest
+    command: -js
+    # REMOVIDO: O NATS não precisa ser exposto. A comunicação é interna.
+    # ports:
+    #   - "4222:4222"
+    networks:
+      - wootrico_network
+    volumes:
+      - nats_jetstream:/tmp/nats/jetstream
+
+networks:
+  wootrico_network:
+    driver: bridge
+
+volumes:
+  wootrico_data:
+  nats_jetstream:
